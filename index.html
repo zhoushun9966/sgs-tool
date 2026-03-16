@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>三国杀文案同步中心</title>
+    <style>
+        :root { --primary: #e63946; --bg: #f8f9fa; }
+        body { font-family: sans-serif; background: var(--bg); padding: 30px; display: flex; justify-content: center; }
+        .container { width: 900px; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { border: 1px solid #eee; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .preview { background: #f4f4f4; padding: 10px; font-size: 12px; color: #666; border-radius: 6px; min-height: 36px; word-break: break-all; }
+        .btn-copy { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        #status { text-align: center; color: #999; font-size: 14px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="status">正在从云端同步数据...</div>
+    <h1 id="ui-title">加载中...</h1>
+    <p id="ui-desc">正在拉取最新文案，请稍候</p>
+    <div id="ui-content"></div>
+</div>
+
+<div id="toast" style="visibility:hidden; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:10px 20px; border-radius:20px; z-index:100;">已复制</div>
+
+<script>
+    // 🔴 只需要把这里换成你的 Gitee 用户名和仓库名
+    const OWNER = 'zhoushun9966';
+    const REPO = 'sgs-data';
+    const PATH = 'data.json';
+
+    // 这是 Gitee 官方的公开 API 地址，不需要翻墙，非常稳定
+    const CLOUD_URL = `https://gitee.com/api/v5/repos/${OWNER}/${REPO}/contents/${PATH}`;
+
+    async function syncData() {
+        const statusEl = document.getElementById('status');
+        try {
+            const response = await fetch(CLOUD_URL);
+            if (!response.ok) throw new Error('仓库读取失败，请检查是否公开');
+            
+            const resData = await response.json();
+            
+            // Gitee API 返回的内容是 Base64 编码的，需要解码
+            // decodeURIComponent(escape(...)) 是为了解决中文乱码问题
+            const content = decodeURIComponent(escape(window.atob(resData.content)));
+            const data = JSON.parse(content);
+            
+            render(data);
+            statusEl.innerText = "✅ 云端数据同步成功 (API 模式)";
+        } catch (e) {
+            statusEl.innerText = "❌ 同步失败：" + e.message;
+            console.error(e);
+        }
+    }
+
+    function render(data) {
+        document.getElementById('ui-title').innerText = data.title;
+        const container = document.getElementById('ui-content');
+        container.innerHTML = '';
+        data.sections.forEach(sec => {
+            const html = `
+                <div style="margin-bottom:40px">
+                    <h3 style="border-left:5px solid var(--primary); padding-left:10px">${sec.title}</h3>
+                    <div class="grid">
+                        ${sec.items.map(item => `
+                            <div class="card">
+                                <b>${item.label}</b>
+                                <span style="font-size:12px;color:#999">${item.desc}</span>
+                                <div class="preview">${item.val}</div>
+                                <button class="btn-copy" onclick="doCopy('${item.val}')">复制文案</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function doCopy(txt) {
+        navigator.clipboard.writeText(txt).then(() => {
+            const t = document.getElementById('toast');
+            t.style.visibility = "visible";
+            setTimeout(() => t.style.visibility = "hidden", 2000);
+        });
+    }
+
+    syncData();
+</script>
+</body>
+</html>
