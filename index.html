@@ -4,200 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>三国杀OL文案小助手</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/tesseract.min.js"></script>
     <style>
         :root {
-            --primary-color: #7d5233; 
-            --accent-color: #d35400;  
-            --bg-color: #f4f1ea;      
-            --card-bg: #ffffff;
-            --text-main: #2c3e50;
+            --primary: #7d5233; --accent: #d35400; --bg: #f4f1ea; --card: #ffffff;
         }
-
         body {
-            font-family: 'PingFang SC', sans-serif;
-            background-color: var(--bg-color);
-            margin: 0; padding: 15px;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg); margin: 0; padding: 10px;
             display: flex; flex-direction: column; align-items: center;
         }
-
         .container { width: 100%; max-width: 1200px; }
-
         header {
-            text-align: center; margin-bottom: 20px; padding: 15px;
-            background: var(--card-bg); border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid var(--primary-color);
+            text-align: center; margin-bottom: 15px; padding: 12px;
+            background: var(--card); border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid var(--primary);
         }
-
-        h1 { color: var(--primary-color); margin: 0; font-size: 22px; }
-
-        /* 搜索与识别区 */
-        .search-area {
-            display: flex; gap: 10px; margin-bottom: 20px;
-        }
-
-        .search-box { flex: 1; position: relative; }
+        h1 { color: var(--primary); margin: 0; font-size: 20px; letter-spacing: 1px; }
         
+        /* 搜索识别区 */
+        .search-area { display: flex; gap: 8px; margin-bottom: 15px; }
+        .search-box { flex: 1; position: relative; }
         .search-box input {
-            width: 100%; padding: 12px; border-radius: 8px;
-            border: 1px solid #ddd; box-sizing: border-box; outline: none;
+            width: 100%; padding: 10px 12px; border-radius: 6px;
+            border: 1px solid #ccc; box-sizing: border-box; outline: none; font-size: 14px;
         }
-
         .btn-ocr {
-            background: #27ae60; color: white; padding: 0 15px;
-            border-radius: 8px; cursor: pointer; display: flex;
-            align-items: center; font-weight: bold; font-size: 14px;
-            white-space: nowrap; transition: 0.3s;
+            background: #27ae60; color: white; padding: 0 12px;
+            border-radius: 6px; cursor: pointer; display: flex;
+            align-items: center; font-weight: bold; font-size: 13px;
+            white-space: nowrap; transition: 0.2s; border: none;
         }
-
         .btn-ocr:hover { background: #219150; }
 
         #ocr-status {
-            font-size: 12px; color: var(--accent-color);
-            text-align: center; margin-bottom: 10px; display: none;
+            font-size: 12px; color: var(--accent); background: #fff3e0;
+            padding: 5px; border-radius: 4px; text-align: center;
+            margin-bottom: 10px; display: none; width: 100%;
         }
 
-        /* 紧凑网格布局 */
+        /* 紧凑布局 */
         .section-title {
-            display: flex; align-items: center; margin: 20px 0 10px;
-            font-size: 18px; color: var(--primary-color); font-weight: bold;
+            display: flex; align-items: center; margin: 15px 0 8px;
+            font-size: 16px; color: var(--primary); font-weight: bold;
         }
-
+        .section-title::before {
+            content: ""; width: 4px; height: 16px; background: var(--primary);
+            margin-right: 8px; border-radius: 2px;
+        }
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
-            gap: 12px;
+            gap: 10px;
         }
-
         .card {
-            background: var(--card-bg); border-radius: 8px; padding: 12px;
+            background: var(--card); border-radius: 6px; padding: 10px;
             border: 1px solid rgba(0,0,0,0.05); transition: 0.2s;
             display: flex; flex-direction: column;
         }
-
-        .card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
-
-        .card-label { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
-        .card-desc { font-size: 11px; color: #95a5a6; margin-bottom: 8px; }
-
-        .card-val {
-            background: #f8f9fa; padding: 8px; border-radius: 4px;
-            font-size: 13px; color: #444; border-left: 3px solid #ddd;
-            margin-bottom: 10px; flex-grow: 1; word-break: break-all;
-        }
-
-        .btn-copy {
-            background: var(--primary-color); color: white; border: none;
-            padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px;
-        }
-
-        #toast {
-            visibility: hidden; position: fixed; bottom: 30px; left: 50%;
-            transform: translateX(-50%); background: rgba(0,0,0,0.8);
-            color: white; padding: 10px 20px; border-radius: 20px; z-index: 1000;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <h1>🗡 三国杀OL文案小助手</h1>
-        <div id="status" style="font-size:12px; color:#7f8c8d; margin-top:5px;">正在同步云端...</div>
-    </header>
-
-    <div id="ocr-status">正在读取图片文案... <span id="ocr-progress">0%</span></div>
-
-    <div class="search-area">
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="输入关键词或 粘贴/上传 图片识别..." oninput="handleSearch()">
-        </div>
-        <label class="btn-ocr">
-            📷 识别图片
-            <input type="file" accept="image/*" style="display:none" onchange="recognizeImage(this.files[0])">
-        </label>
-    </div>
-
-    <div id="ui-content"></div>
-</div>
-
-<div id="toast">已复制</div>
-
-<script>
-    const CONFIG = { owner: 'zhoushun9966', repo: 'sgs-data', path: 'data.json' };
-    let allData = [];
-
-    async function fetchData() {
-        const url = `https://gitee.com/api/v5/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.path}`;
-        try {
-            const res = await fetch(url);
-            const json = await res.json();
-            const content = decodeURIComponent(escape(window.atob(json.content)));
-            allData = JSON.parse(content).sections;
-            render(allData);
-            document.getElementById('status').innerText = "✅ 数据同步成功";
-        } catch (e) { document.getElementById('status').innerText = "❌ 同步失败"; }
-    }
-
-    function render(sections) {
-        const container = document.getElementById('ui-content');
-        container.innerHTML = '';
-        sections.forEach(sec => {
-            if(sec.items.length === 0) return;
-            const secHtml = `<div class="section-title">${sec.title}</div><div class="grid">${sec.items.map(item => `
-                <div class="card">
-                    <div class="card-label">${item.label}</div>
-                    <div class="card-desc">${item.desc}</div>
-                    <div class="card-val">${item.val}</div>
-                    <button class="btn-copy" onclick="doCopy('${item.val.replace(/'/g, "\\'")}')">复制文案</button>
-                </div>`).join('')}</div>`;
-            container.innerHTML += secHtml;
-        });
-    }
-
-    function handleSearch() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        const filtered = allData.map(sec => ({
-            ...sec,
-            items: sec.items.filter(item => item.label.toLowerCase().includes(query) || item.val.toLowerCase().includes(query))
-        }));
-        render(filtered);
-    }
-
-    // 图片识别逻辑
-    async function recognizeImage(file) {
-        if (!file) return;
-        const status = document.getElementById('ocr-status');
-        const progress = document.getElementById('ocr-progress');
-        status.style.display = 'block';
-        
-        try {
-            const result = await Tesseract.recognize(file, 'chi_sim', {
-                logger: m => { if(m.status === 'recognizing text') progress.innerText = Math.round(m.progress * 100) + '%'; }
-            });
-            const text = result.data.text.trim().replace(/\s+/g, '');
-            document.getElementById('searchInput').value = text;
-            handleSearch();
-            status.innerText = "✅ 识别完成";
-            setTimeout(() => status.style.display = 'none', 2000);
-        } catch (e) { status.innerText = "❌ 识别失败"; }
-    }
-
-    // 支持直接粘贴图片
-    window.addEventListener('paste', e => {
-        const item = e.clipboardData.items[0];
-        if (item && item.type.indexOf('image') !== -1) recognizeImage(item.getAsFile());
-    });
-
-    function doCopy(txt) {
-        navigator.clipboard.writeText(txt).then(() => {
-            const t = document.getElementById('toast');
-            t.style.visibility = "visible";
-            setTimeout(() => t.style.visibility = "hidden", 2000);
-        });
-    }
-
-    fetchData();
-</script>
-</body>
-</html>
