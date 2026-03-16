@@ -14,10 +14,9 @@
         .search-box { flex: 1; }
         .search-box input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; outline: none; }
         .btn-ocr { background: #27ae60; color: white; padding: 0 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; font-weight: bold; font-size: 13px; white-space: nowrap; border:none; }
-        #ocr-status { font-size: 12px; color: var(--accent); background: #fff3e0; padding: 8px; border-radius: 4px; text-align: center; margin-bottom: 10px; display: none; width: 100%; box-sizing: border-box;}
-        .section-title { margin: 15px 0 8px; font-size: 16px; color: var(--primary); font-weight: bold; width: 100%; text-align: left; }
+        #ocr-status { font-size: 12px; color: var(--accent); background: #fff3e0; padding: 8px; border-radius: 4px; text-align: center; margin-bottom: 10px; display: none; width: 100%; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; }
-        .card { background: var(--card); border-radius: 6px; padding: 10px; border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; text-align: left;}
+        .card { background: var(--card); border-radius: 6px; padding: 10px; border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; }
         .card-label { font-weight: bold; font-size: 14px; margin-bottom: 2px; }
         .card-val { background: #f8f9fa; padding: 8px; border-radius: 4px; font-size: 12px; color: #444; border-left: 2px solid #ddd; margin-bottom: 8px; flex-grow: 1; word-break: break-all; }
         .btn-copy { background: var(--primary); color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -29,14 +28,14 @@
 <div class="container">
     <header>
         <h1>🗡 三国杀OL文案小助手</h1>
-        <div id="status" style="font-size:11px; color:#95a5a6; margin-top:4px;">正在载入云端配置...</div>
+        <div id="status" style="font-size:11px; color:#95a5a6; margin-top:4px;">正在初始化云端数据...</div>
     </header>
 
-    <div id="ocr-status">正在启动引擎...</div>
+    <div id="ocr-status">正在启动轻量级引擎 (2MB)...</div>
 
     <div class="search-area">
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="搜文案 或 粘贴截图..." oninput="handleSearch()">
+            <input type="text" id="searchInput" placeholder="搜索文案 或 粘贴截图..." oninput="handleSearch()">
         </div>
         <label class="btn-ocr">
             📷 选图识别
@@ -44,16 +43,15 @@
         </label>
     </div>
 
-    <div id="ui-content" style="width: 100%; text-align: center; color: #999; padding-top: 50px;">
-        数据加载中...
-    </div>
+    <div id="ui-content" style="width: 100%; text-align: center; color: #999; padding-top: 50px;">数据加载中...</div>
 </div>
 <div id="toast">复制成功</div>
+
+<script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/2.1.1/tesseract.min.js"></script>
 
 <script>
     const CONFIG = { owner: 'zhoushun9966', repo: 'sgs-data', path: 'data.json' };
     let allData = [];
-    let isTesseractLoaded = false;
 
     async function fetchData() {
         const url = `https://gitee.com/api/v5/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.path}`;
@@ -61,8 +59,7 @@
             const res = await fetch(url);
             const json = await res.json();
             const content = decodeURIComponent(escape(window.atob(json.content)));
-            const parsed = JSON.parse(content);
-            allData = parsed.sections || (Array.isArray(parsed) ? [{title: '默认分类', items: parsed}] : []);
+            allData = JSON.parse(content).sections || JSON.parse(content);
             render(allData);
             document.getElementById('status').innerText = "✅ 文案同步成功";
         } catch (e) { document.getElementById('status').innerText = "❌ 加载失败"; }
@@ -71,22 +68,13 @@
     function render(sections) {
         const container = document.getElementById('ui-content');
         container.innerHTML = '';
-        sections.forEach(sec => {
-            if(!sec.items || sec.items.length === 0) return;
-            const secTitle = document.createElement('div');
-            secTitle.className = 'section-title';
-            secTitle.innerText = sec.title;
+        (Array.isArray(sections) ? sections : [sections]).forEach(sec => {
+            if(!sec.items) return;
             const grid = document.createElement('div');
             grid.className = 'grid';
             sec.items.forEach(item => {
-                grid.innerHTML += `
-                    <div class="card">
-                        <div class="card-label">${item.label || '未命名'}</div>
-                        <div class="card-val">${item.val || ''}</div>
-                        <button class="btn-copy" onclick="doCopy('${(item.val || '').replace(/'/g, "\\'")}')">复制</button>
-                    </div>`;
+                grid.innerHTML += `<div class="card"><div class="card-label">${item.label}</div><div class="card-val">${item.val}</div><button class="btn-copy" onclick="doCopy('${item.val.replace(/'/g, "\\'")}')">复制</button></div>`;
             });
-            container.appendChild(secTitle);
             container.appendChild(grid);
         });
     }
@@ -95,61 +83,35 @@
         const query = document.getElementById('searchInput').value.toLowerCase();
         const filtered = allData.map(sec => ({
             ...sec,
-            items: sec.items.filter(item => 
-                (item.label && item.label.toLowerCase().includes(query)) || 
-                (item.val && item.val.toLowerCase().includes(query))
-            )
+            items: sec.items.filter(item => item.label.toLowerCase().includes(query) || item.val.toLowerCase().includes(query))
         }));
         render(filtered);
-    }
-
-    function loadOCRScript() {
-        return new Promise((resolve) => {
-            if (window.Tesseract) return resolve();
-            const script = document.createElement('script');
-            // 依然使用字节跳动高速链接
-            script.src = "https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/tesseract.min.js";
-            script.onload = () => resolve();
-            document.head.appendChild(script);
-        });
     }
 
     async function handleImage(file) {
         if (!file) return;
         const status = document.getElementById('ocr-status');
         status.style.display = 'block';
-        status.innerText = "🚀 正在从镜像站极速加载语言包...";
-        
+        status.innerText = "🚀 极速引擎加载中...";
+
         try {
-            await loadOCRScript();
-            
-            // 核心修复点：强制指定 worker 路径和语言包路径
-            const worker = await Tesseract.createWorker({
-                workerPath: 'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/worker.min.js',
-                langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0_best', // 使用 jsdelivr 加速
-                corePath: 'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js-core/4.0.1/tesseract-core.wasm.js',
+            // 使用 Tesseract 官方推荐的最精简版本和极速模型
+            const { data: { text } } = await Tesseract.recognize(file, 'chi_sim', {
+                langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0_fast', 
                 logger: m => {
-                    if(m.status === 'recognizing text') {
-                        status.innerText = "识别中: " + Math.round(m.progress * 100) + '%';
-                    }
+                    if(m.status === 'recognizing text') status.innerText = "进度: " + Math.round(m.progress * 100) + "%";
                 }
             });
 
-            await worker.loadLanguage('chi_sim');
-            await worker.initialize('chi_sim');
-            const { data: { text } } = await worker.recognize(file);
-            
             const cleanText = text.trim().replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
             if (cleanText) {
                 document.getElementById('searchInput').value = cleanText;
                 handleSearch();
                 status.innerText = "✅ 识别结果: " + cleanText;
             } else { status.innerText = "⚠️ 未能识别文字"; }
-            
-            await worker.terminate();
-            setTimeout(() => { status.style.display = 'none'; }, 5000);
+            setTimeout(() => { status.style.display = 'none'; }, 4000);
         } catch (e) {
-            status.innerText = "❌ 识别超时，请重试或手动输入";
+            status.innerText = "❌ 识别超时，请手动搜索";
             console.error(e);
         }
     }
@@ -161,12 +123,10 @@
 
     function doCopy(txt) {
         navigator.clipboard.writeText(txt).then(() => {
-            const t = document.getElementById('toast');
-            t.style.visibility = "visible";
+            const t = document.getElementById('toast'); t.style.visibility = "visible";
             setTimeout(() => t.style.visibility = "hidden", 1500);
         });
     }
-
     fetchData();
 </script>
 </body>
