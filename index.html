@@ -4,170 +4,97 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>三国杀OL文案小助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <style>
-        /* 1. 现代感配色与全局样式 */
         :root {
-            --primary-color: #7d5233; /* 古典木质色 */
-            --accent-color: #d35400;  /* 亮桔色点缀 */
-            --bg-color: #f4f1ea;      /* 宣纸色背景 */
+            --primary-color: #7d5233; 
+            --accent-color: #d35400;  
+            --bg-color: #f4f1ea;      
             --card-bg: #ffffff;
             --text-main: #2c3e50;
-            --text-light: #7f8c8d;
         }
 
         body {
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-family: 'PingFang SC', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
         }
 
-        /* 2. 容器与头部 */
-        .container {
-            width: 100%;
-            max-width: 1000px;
-        }
+        .container { width: 100%; max-width: 1200px; }
 
         header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 20px;
-            background: var(--card-bg);
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            border-top: 5px solid var(--primary-color);
+            text-align: center; margin-bottom: 20px; padding: 15px;
+            background: var(--card-bg); border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid var(--primary-color);
         }
 
-        h1 {
-            color: var(--primary-color);
-            margin: 0;
-            font-size: 28px;
-            letter-spacing: 2px;
+        h1 { color: var(--primary-color); margin: 0; font-size: 22px; }
+
+        /* 搜索与识别区 */
+        .search-area {
+            display: flex; gap: 10px; margin-bottom: 20px;
         }
 
-        .status-badge {
-            display: inline-block;
-            font-size: 12px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            background: #e8f5e9;
-            color: #2e7d32;
-            margin-top: 10px;
-        }
-
-        /* 3. 搜索框 */
-        .search-box {
-            width: 100%;
-            margin-bottom: 30px;
-            position: relative;
-        }
-
+        .search-box { flex: 1; position: relative; }
+        
         .search-box input {
-            width: 100%;
-            padding: 15px 20px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-            font-size: 16px;
-            box-sizing: border-box;
-            outline: none;
-            transition: all 0.3s;
+            width: 100%; padding: 12px; border-radius: 8px;
+            border: 1px solid #ddd; box-sizing: border-box; outline: none;
         }
 
-        .search-box input:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 8px rgba(211, 84, 0, 0.2);
+        .btn-ocr {
+            background: #27ae60; color: white; padding: 0 15px;
+            border-radius: 8px; cursor: pointer; display: flex;
+            align-items: center; font-weight: bold; font-size: 14px;
+            white-space: nowrap; transition: 0.3s;
         }
 
-        /* 4. 分类标题 */
+        .btn-ocr:hover { background: #219150; }
+
+        #ocr-status {
+            font-size: 12px; color: var(--accent-color);
+            text-align: center; margin-bottom: 10px; display: none;
+        }
+
+        /* 紧凑网格布局 */
         .section-title {
-            display: flex;
-            align-items: center;
-            margin: 30px 0 15px;
-            font-size: 20px;
-            color: var(--primary-color);
+            display: flex; align-items: center; margin: 20px 0 10px;
+            font-size: 18px; color: var(--primary-color); font-weight: bold;
         }
 
-        .section-title::before {
-            content: "";
-            width: 6px;
-            height: 24px;
-            background: var(--primary-color);
-            margin-right: 12px;
-            border-radius: 3px;
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+            gap: 12px;
         }
 
-        /* 5. 卡片布局 */
-        /* 更加紧凑的卡片样式 */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
-    gap: 12px;
-}
+        .card {
+            background: var(--card-bg); border-radius: 8px; padding: 12px;
+            border: 1px solid rgba(0,0,0,0.05); transition: 0.2s;
+            display: flex; flex-direction: column;
+        }
 
-.card {
-    background: var(--card-bg);
-    border-radius: 8px; /* 圆角调小点更干练 */
-    padding: 12px;      /* 内边距缩小 */
-    transition: transform 0.2s;
-    border: 1px solid rgba(0,0,0,0.05);
-    display: flex;
-    flex-direction: column;
-}
+        .card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
 
-.card-label {
-    font-size: 15px;    /* 标题字号调小 */
-    margin-bottom: 3px;
-}
+        .card-label { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
+        .card-desc { font-size: 11px; color: #95a5a6; margin-bottom: 8px; }
 
-.card-desc {
-    font-size: 11px;    /* 描述字号调小 */
-    margin-bottom: 8px;
-}
+        .card-val {
+            background: #f8f9fa; padding: 8px; border-radius: 4px;
+            font-size: 13px; color: #444; border-left: 3px solid #ddd;
+            margin-bottom: 10px; flex-grow: 1; word-break: break-all;
+        }
 
-.card-val {
-    padding: 8px;       /* 文案框缩小 */
-    font-size: 13px;    /* 文案字号调小 */
-    border-radius: 4px;
-    margin-bottom: 10px;
-}
-
-.btn-copy {
-    padding: 6px;       /* 按钮变窄 */
-    font-size: 13px;
-}
-        /* 6. 按钮美化 */
         .btn-copy {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
+            background: var(--primary-color); color: white; border: none;
+            padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px;
         }
 
-        .btn-copy:hover {
-            background-color: var(--accent-color);
-        }
-
-        /* 7. 弹窗通知 */
         #toast {
-            visibility: hidden;
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 12px 30px;
-            border-radius: 50px;
-            z-index: 1000;
-            transition: all 0.3s;
+            visibility: hidden; position: fixed; bottom: 30px; left: 50%;
+            transform: translateX(-50%); background: rgba(0,0,0,0.8);
+            color: white; padding: 10px 20px; border-radius: 20px; z-index: 1000;
         }
     </style>
 </head>
@@ -176,87 +103,91 @@
 <div class="container">
     <header>
         <h1>🗡 三国杀OL文案小助手</h1>
-        <div id="status" class="status-badge">正在同步云端文案...</div>
+        <div id="status" style="font-size:12px; color:#7f8c8d; margin-top:5px;">正在同步云端...</div>
     </header>
 
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="搜索武将、技能或文案关键词..." oninput="handleSearch()">
+    <div id="ocr-status">正在读取图片文案... <span id="ocr-progress">0%</span></div>
+
+    <div class="search-area">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="输入关键词或 粘贴/上传 图片识别..." oninput="handleSearch()">
+        </div>
+        <label class="btn-ocr">
+            📷 识别图片
+            <input type="file" accept="image/*" style="display:none" onchange="recognizeImage(this.files[0])">
+        </label>
     </div>
 
     <div id="ui-content"></div>
 </div>
 
-<div id="toast">已成功复制到剪贴板</div>
+<div id="toast">已复制</div>
 
 <script>
-    const CONFIG = {
-        owner: 'zhoushun9966',
-        repo: 'sgs-data',
-        path: 'data.json'
-    };
-
-    let allData = []; // 存放原始数据用于搜索
+    const CONFIG = { owner: 'zhoushun9966', repo: 'sgs-data', path: 'data.json' };
+    let allData = [];
 
     async function fetchData() {
-        const statusEl = document.getElementById('status');
         const url = `https://gitee.com/api/v5/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.path}`;
-        
         try {
             const res = await fetch(url);
             const json = await res.json();
             const content = decodeURIComponent(escape(window.atob(json.content)));
             allData = JSON.parse(content).sections;
             render(allData);
-            statusEl.innerText = "✅ 云端文案已同步";
-        } catch (e) {
-            statusEl.innerText = "❌ 同步失败，请检查网络";
-            statusEl.style.background = "#ffebee";
-            statusEl.style.color = "#c62828";
-        }
+            document.getElementById('status').innerText = "✅ 数据同步成功";
+        } catch (e) { document.getElementById('status').innerText = "❌ 同步失败"; }
     }
 
     function render(sections) {
         const container = document.getElementById('ui-content');
         container.innerHTML = '';
-        
         sections.forEach(sec => {
             if(sec.items.length === 0) return;
-
-            const sectionDiv = document.createElement('div');
-            sectionDiv.innerHTML = `<div class="section-title">${sec.title}</div>`;
-            
-            const grid = document.createElement('div');
-            grid.className = 'grid';
-            
-            sec.items.forEach(item => {
-                grid.innerHTML += `
-                    <div class="card">
-                        <div class="card-label">${item.label}</div>
-                        <div class="card-desc">${item.desc}</div>
-                        <div class="card-val">${item.val}</div>
-                        <button class="btn-copy" onclick="doCopy('${item.val.replace(/'/g, "\\'")}')">一键复制</button>
-                    </div>
-                `;
-            });
-            
-            sectionDiv.appendChild(grid);
-            container.appendChild(sectionDiv);
+            const secHtml = `<div class="section-title">${sec.title}</div><div class="grid">${sec.items.map(item => `
+                <div class="card">
+                    <div class="card-label">${item.label}</div>
+                    <div class="card-desc">${item.desc}</div>
+                    <div class="card-val">${item.val}</div>
+                    <button class="btn-copy" onclick="doCopy('${item.val.replace(/'/g, "\\'")}')">复制文案</button>
+                </div>`).join('')}</div>`;
+            container.innerHTML += secHtml;
         });
     }
 
-    // 搜索过滤逻辑
     function handleSearch() {
         const query = document.getElementById('searchInput').value.toLowerCase();
         const filtered = allData.map(sec => ({
             ...sec,
-            items: sec.items.filter(item => 
-                item.label.toLowerCase().includes(query) || 
-                item.val.toLowerCase().includes(query) ||
-                item.desc.toLowerCase().includes(query)
-            )
+            items: sec.items.filter(item => item.label.toLowerCase().includes(query) || item.val.toLowerCase().includes(query))
         }));
         render(filtered);
     }
+
+    // 图片识别逻辑
+    async function recognizeImage(file) {
+        if (!file) return;
+        const status = document.getElementById('ocr-status');
+        const progress = document.getElementById('ocr-progress');
+        status.style.display = 'block';
+        
+        try {
+            const result = await Tesseract.recognize(file, 'chi_sim', {
+                logger: m => { if(m.status === 'recognizing text') progress.innerText = Math.round(m.progress * 100) + '%'; }
+            });
+            const text = result.data.text.trim().replace(/\s+/g, '');
+            document.getElementById('searchInput').value = text;
+            handleSearch();
+            status.innerText = "✅ 识别完成";
+            setTimeout(() => status.style.display = 'none', 2000);
+        } catch (e) { status.innerText = "❌ 识别失败"; }
+    }
+
+    // 支持直接粘贴图片
+    window.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) recognizeImage(item.getAsFile());
+    });
 
     function doCopy(txt) {
         navigator.clipboard.writeText(txt).then(() => {
