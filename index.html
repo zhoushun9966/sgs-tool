@@ -4,61 +4,156 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>三国杀OL文案小助手</title>
-    <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/tesseract.min.js"></script>
     <style>
-        :root {
-            --primary: #7d5233; --accent: #d35400; --bg: #f4f1ea; --card: #ffffff;
-        }
-        body {
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background-color: var(--bg); margin: 0; padding: 10px;
-            display: flex; flex-direction: column; align-items: center;
-        }
+        :root { --primary: #7d5233; --accent: #d35400; --bg: #f4f1ea; --card: #ffffff; }
+        body { font-family: sans-serif; background-color: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1200px; }
-        header {
-            text-align: center; margin-bottom: 15px; padding: 12px;
-            background: var(--card); border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid var(--primary);
-        }
-        h1 { color: var(--primary); margin: 0; font-size: 20px; letter-spacing: 1px; }
-        
-        /* 搜索识别区 */
+        header { text-align: center; margin-bottom: 15px; padding: 12px; background: var(--card); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid var(--primary); }
+        h1 { color: var(--primary); margin: 0; font-size: 20px; }
         .search-area { display: flex; gap: 8px; margin-bottom: 15px; }
-        .search-box { flex: 1; position: relative; }
-        .search-box input {
-            width: 100%; padding: 10px 12px; border-radius: 6px;
-            border: 1px solid #ccc; box-sizing: border-box; outline: none; font-size: 14px;
-        }
-        .btn-ocr {
-            background: #27ae60; color: white; padding: 0 12px;
-            border-radius: 6px; cursor: pointer; display: flex;
-            align-items: center; font-weight: bold; font-size: 13px;
-            white-space: nowrap; transition: 0.2s; border: none;
-        }
-        .btn-ocr:hover { background: #219150; }
+        .search-box { flex: 1; }
+        .search-box input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; outline: none; }
+        .btn-ocr { background: #27ae60; color: white; padding: 0 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; font-weight: bold; font-size: 13px; white-space: nowrap; }
+        #ocr-status { font-size: 12px; color: var(--accent); background: #fff3e0; padding: 8px; border-radius: 4px; text-align: center; margin-bottom: 10px; display: none; width: 100%; box-sizing: border-box;}
+        .section-title { margin: 15px 0 8px; font-size: 16px; color: var(--primary); font-weight: bold; width: 100%; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; }
+        .card { background: var(--card); border-radius: 6px; padding: 10px; border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .card-label { font-weight: bold; font-size: 14px; margin-bottom: 2px; }
+        .card-desc { font-size: 11px; color: #95a5a6; margin-bottom: 8px; }
+        .card-val { background: #f8f9fa; padding: 8px; border-radius: 4px; font-size: 12px; color: #444; border-left: 2px solid #ddd; margin-bottom: 8px; flex-grow: 1; word-break: break-all; }
+        .btn-copy { background: var(--primary); color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 20px; border-radius: 20px; z-index: 1000; }
+    </style>
+</head>
+<body>
 
-        #ocr-status {
-            font-size: 12px; color: var(--accent); background: #fff3e0;
-            padding: 5px; border-radius: 4px; text-align: center;
-            margin-bottom: 10px; display: none; width: 100%;
-        }
+<div class="container">
+    <header>
+        <h1>🗡 三国杀OL文案小助手</h1>
+        <div id="status" style="font-size:11px; color:#95a5a6; margin-top:4px;">正在载入云端配置...</div>
+    </header>
 
-        /* 紧凑布局 */
-        .section-title {
-            display: flex; align-items: center; margin: 15px 0 8px;
-            font-size: 16px; color: var(--primary); font-weight: bold;
+    <div id="ocr-status">首次识别需加载引擎，请稍候... <span id="ocr-progress">0%</span></div>
+
+    <div class="search-area">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="搜索文案 或 直接粘贴截图..." oninput="handleSearch()">
+        </div>
+        <label class="btn-ocr">
+            📷 选图识别
+            <input type="file" accept="image/*" style="display:none" onchange="handleImage(this.files[0])">
+        </label>
+    </div>
+
+    <div id="ui-content"></div>
+</div>
+<div id="toast">复制成功</div>
+
+<script>
+    const CONFIG = { owner: 'zhoushun9966', repo: 'sgs-data', path: 'data.json' };
+    let allData = [];
+    let isTesseractLoaded = false;
+
+    // 1. 获取基础数据（这个很快，保证网页秒开）
+    async function fetchData() {
+        const url = `https://gitee.com/api/v5/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.path}`;
+        try {
+            const res = await fetch(url);
+            const json = await res.json();
+            const content = decodeURIComponent(escape(window.atob(json.content)));
+            allData = JSON.parse(content).sections;
+            render(allData);
+            document.getElementById('status').innerText = "✅ 文案已同步";
+        } catch (e) { document.getElementById('status').innerText = "❌ 连不上云端"; }
+    }
+
+    function render(sections) {
+        const container = document.getElementById('ui-content');
+        container.innerHTML = '';
+        sections.forEach(sec => {
+            if(!sec.items || sec.items.length === 0) return;
+            const secHtml = `<div class="section-title">${sec.title}</div><div class="grid">${sec.items.map(item => `
+                <div class="card">
+                    <div class="card-label">${item.label}</div>
+                    <div class="card-desc">${item.desc}</div>
+                    <div class="card-val">${item.val}</div>
+                    <button class="btn-copy" onclick="doCopy('${item.val.replace(/'/g, "\\'")}')">复制</button>
+                </div>`).join('')}</div>`;
+            container.innerHTML += secHtml;
+        });
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = allData.map(sec => ({
+            ...sec,
+            items: sec.items.filter(item => item.label.toLowerCase().includes(query) || item.val.toLowerCase().includes(query))
+        }));
+        render(filtered);
+    }
+
+    // 2. 动态加载 OCR 脚本
+    function loadOCRScript() {
+        return new Promise((resolve) => {
+            if (isTesseractLoaded) return resolve();
+            const script = document.createElement('script');
+            script.src = "https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/tesseract.min.js";
+            script.onload = () => { isTesseractLoaded = true; resolve(); };
+            document.head.appendChild(script);
+        });
+    }
+
+    // 3. 处理图片识别
+    async function handleImage(file) {
+        if (!file) return;
+        const status = document.getElementById('ocr-status');
+        status.style.display = 'block';
+        
+        // 按需加载脚本
+        status.innerText = "正在启动识别引擎...";
+        await loadOCRScript();
+
+        try {
+            const worker = await Tesseract.createWorker({
+                logger: m => {
+                    if(m.status === 'recognizing text') {
+                        document.getElementById('ocr-progress').innerText = Math.round(m.progress * 100) + '%';
+                    }
+                }
+            });
+            await worker.loadLanguage('chi_sim');
+            await worker.initialize('chi_sim');
+            const { data: { text } } = await worker.recognize(file);
+            const cleanText = text.trim().replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+            if (cleanText) {
+                document.getElementById('searchInput').value = cleanText;
+                handleSearch();
+                status.innerText = "✅ 识别成功";
+            } else {
+                status.innerText = "⚠️ 未识识别到文字";
+            }
+            await worker.terminate();
+            setTimeout(() => { status.style.display = 'none'; }, 2000);
+        } catch (e) {
+            status.innerText = "❌ 识别出错";
         }
-        .section-title::before {
-            content: ""; width: 4px; height: 16px; background: var(--primary);
-            margin-right: 8px; border-radius: 2px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
-            gap: 10px;
-        }
-        .card {
-            background: var(--card); border-radius: 6px; padding: 10px;
-            border: 1px solid rgba(0,0,0,0.05); transition: 0.2s;
-            display: flex; flex-direction: column;
-        }
+    }
+
+    // 粘贴监听
+    window.addEventListener('paste', e => {
+        const item = e.clipboardData.items[0];
+        if (item && item.type.indexOf('image') !== -1) handleImage(item.getAsFile());
+    });
+
+    function doCopy(txt) {
+        navigator.clipboard.writeText(txt).then(() => {
+            const t = document.getElementById('toast');
+            t.style.visibility = "visible";
+            setTimeout(() => t.style.visibility = "hidden", 1500);
+        });
+    }
+
+    fetchData();
+</script>
+</body>
+</html>
