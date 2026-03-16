@@ -18,11 +18,9 @@
         .section-title { margin: 15px 0 8px; font-size: 16px; color: var(--primary); font-weight: bold; width: 100%; text-align: left; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; }
         .card { background: var(--card); border-radius: 6px; padding: 10px; border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; text-align: left;}
-        .card-label { font-weight: bold; font-size: 14px; margin-bottom: 2px; color: #333; }
-        .card-desc { font-size: 11px; color: #95a5a6; margin-bottom: 8px; }
-        .card-val { background: #f8f9fa; padding: 8px; border-radius: 4px; font-size: 12px; color: #444; border-left: 2px solid #ddd; margin-bottom: 8px; flex-grow: 1; word-break: break-all; min-height: 30px; }
-        .btn-copy { background: var(--primary); color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; }
-        .btn-copy:hover { background: var(--accent); }
+        .card-label { font-weight: bold; font-size: 14px; margin-bottom: 2px; }
+        .card-val { background: #f8f9fa; padding: 8px; border-radius: 4px; font-size: 12px; color: #444; border-left: 2px solid #ddd; margin-bottom: 8px; flex-grow: 1; word-break: break-all; }
+        .btn-copy { background: var(--primary); color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 20px; border-radius: 20px; z-index: 1000; }
     </style>
 </head>
@@ -34,11 +32,11 @@
         <div id="status" style="font-size:11px; color:#95a5a6; margin-top:4px;">正在载入云端配置...</div>
     </header>
 
-    <div id="ocr-status">正在准备识别引擎... <span id="ocr-progress">0%</span></div>
+    <div id="ocr-status">正在启动引擎...</div>
 
     <div class="search-area">
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="搜索文案 或 直接粘贴截图..." oninput="handleSearch()">
+            <input type="text" id="searchInput" placeholder="搜文案 或 粘贴截图..." oninput="handleSearch()">
         </div>
         <label class="btn-ocr">
             📷 选图识别
@@ -47,7 +45,7 @@
     </div>
 
     <div id="ui-content" style="width: 100%; text-align: center; color: #999; padding-top: 50px;">
-        数据加载中，请稍候...
+        数据加载中...
     </div>
 </div>
 <div id="toast">复制成功</div>
@@ -57,65 +55,40 @@
     let allData = [];
     let isTesseractLoaded = false;
 
-    // 1. 获取基础数据
     async function fetchData() {
-        const statusDisplay = document.getElementById('status');
         const url = `https://gitee.com/api/v5/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.path}`;
-        
         try {
             const res = await fetch(url);
-            if (!res.ok) throw new Error("无法读取文件");
             const json = await res.json();
             const content = decodeURIComponent(escape(window.atob(json.content)));
             const parsed = JSON.parse(content);
-            
-            // 自动兼容两种 JSON 格式：带 sections 的或直接是数组的
             allData = parsed.sections || (Array.isArray(parsed) ? [{title: '默认分类', items: parsed}] : []);
-            
-            if (allData.length > 0) {
-                render(allData);
-                statusDisplay.innerText = "✅ 文案同步成功";
-            } else {
-                throw new Error("数据格式为空");
-            }
-        } catch (e) {
-            console.error(e);
-            statusDisplay.innerText = "❌ 加载失败：" + e.message;
-            document.getElementById('ui-content').innerText = "暂无文案数据，请检查 Gitee 仓库 data.json 格式";
-        }
+            render(allData);
+            document.getElementById('status').innerText = "✅ 文案同步成功";
+        } catch (e) { document.getElementById('status').innerText = "❌ 加载失败"; }
     }
 
     function render(sections) {
         const container = document.getElementById('ui-content');
         container.innerHTML = '';
-        
         sections.forEach(sec => {
             if(!sec.items || sec.items.length === 0) return;
-            
             const secTitle = document.createElement('div');
             secTitle.className = 'section-title';
             secTitle.innerText = sec.title;
-            
             const grid = document.createElement('div');
             grid.className = 'grid';
-            
             sec.items.forEach(item => {
                 grid.innerHTML += `
                     <div class="card">
                         <div class="card-label">${item.label || '未命名'}</div>
-                        <div class="card-desc">${item.desc || ''}</div>
                         <div class="card-val">${item.val || ''}</div>
                         <button class="btn-copy" onclick="doCopy('${(item.val || '').replace(/'/g, "\\'")}')">复制</button>
                     </div>`;
             });
-            
             container.appendChild(secTitle);
             container.appendChild(grid);
         });
-        
-        if (container.innerHTML === '') {
-            container.innerText = "没有匹配的文案";
-        }
     }
 
     function handleSearch() {
@@ -130,11 +103,11 @@
         render(filtered);
     }
 
-    // 动态加载 OCR 脚本
     function loadOCRScript() {
         return new Promise((resolve) => {
             if (window.Tesseract) return resolve();
             const script = document.createElement('script');
+            // 依然使用字节跳动高速链接
             script.src = "https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/tesseract.min.js";
             script.onload = () => resolve();
             document.head.appendChild(script);
@@ -145,41 +118,45 @@
         if (!file) return;
         const status = document.getElementById('ocr-status');
         status.style.display = 'block';
-        status.innerText = "正在拉取识别引擎 (约10MB)...";
+        status.innerText = "🚀 正在从镜像站极速加载语言包...";
         
         try {
             await loadOCRScript();
+            
+            // 核心修复点：强制指定 worker 路径和语言包路径
             const worker = await Tesseract.createWorker({
+                workerPath: 'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js/4.0.2/worker.min.js',
+                langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0_best', // 使用 jsdelivr 加速
+                corePath: 'https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/tesseract.js-core/4.0.1/tesseract-core.wasm.js',
                 logger: m => {
                     if(m.status === 'recognizing text') {
-                        document.getElementById('ocr-status').innerText = "识别进度: " + Math.round(m.progress * 100) + '%';
+                        status.innerText = "识别中: " + Math.round(m.progress * 100) + '%';
                     }
                 }
             });
+
             await worker.loadLanguage('chi_sim');
             await worker.initialize('chi_sim');
             const { data: { text } } = await worker.recognize(file);
+            
             const cleanText = text.trim().replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
             if (cleanText) {
                 document.getElementById('searchInput').value = cleanText;
                 handleSearch();
                 status.innerText = "✅ 识别结果: " + cleanText;
-            } else {
-                status.innerText = "⚠️ 未能识别文字";
-            }
+            } else { status.innerText = "⚠️ 未能识别文字"; }
+            
             await worker.terminate();
             setTimeout(() => { status.style.display = 'none'; }, 5000);
         } catch (e) {
-            status.innerText = "❌ 识别出错，请重试";
+            status.innerText = "❌ 识别超时，请重试或手动输入";
             console.error(e);
         }
     }
 
     window.addEventListener('paste', e => {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (let item of items) {
-            if (item.type.indexOf('image') !== -1) handleImage(item.getAsFile());
-        }
+        const item = (e.clipboardData || e.originalEvent.clipboardData).items[0];
+        if (item && item.type.indexOf('image') !== -1) handleImage(item.getAsFile());
     });
 
     function doCopy(txt) {
