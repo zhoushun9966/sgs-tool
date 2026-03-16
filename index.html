@@ -101,53 +101,44 @@
         }
 
         /* 5. 卡片布局 */
-        .grid {
+        /* 更加紧凑的卡片样式 */
+.grid {
     display: grid;
-    /* 强制一行显示 5 列 */
-    grid-template-columns: repeat(5, 1fr); 
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+    gap: 12px;
 }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-            border: 1px solid rgba(0,0,0,0.03);
-            display: flex;
-            flex-direction: column;
-        }
+.card {
+    background: var(--card-bg);
+    border-radius: 8px; /* 圆角调小点更干练 */
+    padding: 12px;      /* 内边距缩小 */
+    transition: transform 0.2s;
+    border: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+}
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
+.card-label {
+    font-size: 15px;    /* 标题字号调小 */
+    margin-bottom: 3px;
+}
 
-        .card-label {
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
+.card-desc {
+    font-size: 11px;    /* 描述字号调小 */
+    margin-bottom: 8px;
+}
 
-        .card-desc {
-            font-size: 13px;
-            color: var(--text-light);
-            margin-bottom: 15px;
-        }
+.card-val {
+    padding: 8px;       /* 文案框缩小 */
+    font-size: 13px;    /* 文案字号调小 */
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
 
-        .card-val {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #444;
-            border-left: 3px solid #ddd;
-            word-break: break-all;
-            margin-bottom: 15px;
-            flex-grow: 1;
-        }
-
+.btn-copy {
+    padding: 6px;       /* 按钮变窄 */
+    font-size: 13px;
+}
         /* 6. 按钮美化 */
         .btn-copy {
             background-color: var(--primary-color);
